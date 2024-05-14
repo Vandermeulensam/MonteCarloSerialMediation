@@ -1,0 +1,227 @@
+---
+title: "Monte_Carlo_power_mediation"
+author: "Vandermeulen Sam"
+date: "2024-05-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Monte-Carlo simulations for empirical power of path coefficients and indirect effect
+
+## Introduction 
+A PDF containing my master's thesis in experimental psychology has been 
+uploaded to this repository (Vandermeulen et al., 2023). It delves into the impact of (multi)collinearity 
+on the empirical power of path coefficients within a serial mediation model. 
+Utilizing a simulation approach, I investigated these effects, developing a
+user-defined function to facilitate the process. Additionally, the thesis 
+elucidates the circumstances under which empirical power diminishes in a 
+(multi)collinear setting. Furthermore, it compares the Monte Carlo approach 
+to classical power calculations, specifically Sobel's method, albeit this 
+section has been omitted from the function.
+
+The model is as follows: 
+
+```{r, out.width="50%", echo=FALSE, fig.align="center"}
+knitr::include_graphics("C:/Users/samvd/Desktop/MASTERPROEF/masterproef 2/plots/statistical model serial mediation/Dia1.JPG")
+```
+
+### On the function
+The user-defined function, power.simulation(), is tailored to assess the 
+empirical power of path coefficients in a serial mediation model featuring two
+mediators and no moderators, as outlined in the accompanying file. Serial
+mediation is determined using Hayes' method, a regression-based technique that
+dissects the mechanisms between independent and dependent variables. This 
+method quantifies both direct and indirect effects through mediators, offering 
+valuable insights into intricate causal relationships 
+(Rijnhart et al., 2021; MacKinnon et al., 2019; Have & Joffe, 2010).
+
+The function itself is straightforward; it generates data for each simulation 
+iteration based on predefined values for path coefficients, intercepts, and 
+residual standard deviation. A comprehensive explanation of the methodology is
+provided within the thesis. Although the model tested in this instance 
+features a binary independent variable, it can be effortlessly 
+adjusted as needed.
+
+## Code with annotations
+
+To run this function successfully, it's essential to have several R packages
+installed. These packages provide essential functionalities for data
+manipulation and statistical analysis.
+
+```{r upload packages, eval=FALSE}
+install.packages("semTools", repos = "http://cran.us.r-project.org")
+install.packages("MKpower", repos = "http://cran.us.r-project.org")
+install.packages("lavaan", repos = "http://cran.us.r-project.org")
+```
+
+```{r library packages, eval=FALSE}
+library(lavaan); library(semTools);library(MKpower)
+```
+
+In this code snippet, variables for path coefficients, intercepts, residual 
+standard deviation, sample size, and the likelihood of being female (1) are 
+initialized. These variables will be exchanged with numeric values obtained
+from data. Additionally, the number of simulations (NumSim) is set to 1000,
+although this value must be adjusted to reduce Monte-Carlo error. The comment
+provides an example of how to assign numeric values to the path coefficients 
+variable (b_2). This code serves as a foundation for conducting simulations
+and analyses related to a serial mediation model in experimental psychology.
+
+```{r intialize values, eval=FALSE}
+# numeric values should be filled in between parentheses
+# path coefficients 
+a_1 <- c(); a_2 <- c(); c_prime <- c()
+d <- c(); b_1 <- c(); b_2 <- c()
+# intercepts 
+i1 <- c(); i2 <- c(); i3 <- c()
+# residual standard deviation 
+sigma_m1 <- c(); sigma_m2 <- c(); sigma_m3 <- c()
+# sample size
+n <- c()
+# chance of being female (1)
+k <- c()
+# number of simulations
+NumSim   <-  c()
+````
+
+This function is flexible and adaptable, capable of accommodating both single 
+and multiple simulation scenarios. For a specific simulation scenario, users 
+can obtain numeric values for particular path coefficients, intercepts, 
+residual standard deviation, sample size,... 
+
+Additionally, by utilizing the expand.grid() function, a data frame can be 
+generated containing a row for each combination of the supplied factors. 
+A factor here is a numeric vector for e.g.: path coefficient, intercept,...
+this vector allow us to research increasing collinearity between predictors. 
+This versatility empowers researchers to investigate a wide range of 
+experimental conditions and hypotheses within their serial mediation models.
+
+```{r make data frame with simulation scenarios, eval=FALSE}
+# make a grid with a row for every possible simulation scenario. 
+grid <- data.frame(expand.grid(a_1, a_2, c_prime, d, b_1, b_2, i1, i2,
+                               i3, sigma_m1, sigma_m2, sigma_m3))
+# name grid columns
+colnames(grid) <- c("a_1", "a_2", "c_prime", "d", "b_1",
+                    "b_2", "i1", "i2", "i3", "sigma_m1", 
+                    "sigma_m2", "sigma_m3")  
+```                    
+
+Now that a data frame has been constructed with all the necessary simulation 
+scenarios, is it time to initialize the function.
+
+The functions arguments are the parameters that were used to make the grid,
+plus "n", "k" and "NumSim". Keep in mind that the serial mediation model used 
+here had a binary independent variable ("sex"). Future researchers can change 
+this in their code and possibly leave the "k" parameter out of the arguments. 
+                    
+```{r initialize function, eval=FALSE}
+# define function power.simulation(arguments)
+power.simulation <- function(a_1, a_2, c_prime, d, b_1,
+                             b_2, i1, i2, i3, sigma_m1, sigma_m2,
+                             sigma_m3, n, k, NumSim)
+{  
+  # Monte-Carlo simulation of power of coefficients and indirect effect
+  pval.a_1     <- rep(NA, NumSim); pval.a_2     <- rep(NA, NumSim)
+  pval.d       <- rep(NA, NumSim); pval.b_1     <- rep(NA, NumSim)
+  pval.b_2     <- rep(NA, NumSim); pval.c_prime <- rep(NA, NumSim)
+  intdes <- matrix(0, NumSim, 2)
+  indicatorIE <- vector("numeric", NumSim)
+  # start loop (empirical power via MC simulations)
+  for(i in 1:NumSim)
+  {
+   set.seed(i)
+    # create first binary predictor (Sex)
+    df$X <- data.frame(rbinom(n, 1, k)
+    # create data   
+    df$M_1 <- i1 + a_1*df$X + rnorm(n, 0, sigma_m1)
+    df$M_2 <- i2 + a_2*df$X +       d*df$M_1 + rnorm(n, 0, sigma_m2)
+    df$Y   <- i3 + c_prime*df$X + b_1*df$M_1 + b_2*df$M_2 + rnorm(n, 0, sigma_m3)   
+    colnames(df) <- c("X", "M_1", "M_2", 'Y')
+    # fit linear regression models on the simulated data 
+    fit.1 <- lm(df$M_1 ~ df$X)
+    fit.2 <- lm(df$M_2 ~ df$X + df$M_1)
+    fit.3 <- lm(df$Y ~ df$X + df$M_1 + df$M_2)
+    # MC Confidence Interval for the indirect effect through both mediators
+    model <- "
+      M_1 ~ a1*X
+      M_2 ~ a2*X + d21*M_1
+      Y ~ cp*X + b1*M_1 + b2*M_2
+      ind_eff := a1*d21*b2
+      "
+    fit <- sem(model = model, data = df) 
+    # extract the upper and lower bound 
+    intdes[i,1] <- monteCarloCI(fit)[1,2]
+    intdes[i,2] <- monteCarloCI(fit)[1,3]
+    # indicator function 
+    indicatorIE[i] <- ifelse(((intdes[i,1] < 0) & (intdes[i,2] > 0)),0,1)
+    # save p-values
+    pval.a_1[i] <- coef(summary(fit.1))[2,4] 
+    pval.a_2[i] <- coef(summary(fit.2))[2,4]
+    pval.d[i] <- coef(summary(fit.2))[3,4]
+    pval.b_1[i] <- coef(summary(fit.3))[3,4]
+    pval.b_2[i] <- coef(summary(fit.3))[4,4]
+    pval.c_prime[i] <- coef(summary(fit.3))[2,4]
+  }
+  # store power for MC 
+  power.a_1 <- mean(pval.a_1 < 0.05); power.a_2  <- mean(pval.a_2 < 0.05)
+  power.b_1 <- mean(pval.b_1 < 0.05); power.b_2 <- mean(pval.b_2 < 0.05)
+  power.d <- mean(pval.d < 0.05); power.c_prime <- mean(pval.c_prime < 0.05)
+  power.IE <- mean(indicatorIE) 
+  # list results. Listing is done for later graphing using GGPlot2
+  results <- list("power.a_1" = power.a_1, "power.a_2" = power.a_2,
+                  "power.b_1" = power.b_1, "power.b_2" = power.b_2, 
+                  "power.d" = power.d, "power.c_prime" = power.c_prime, 
+                  "power.IE" = power.IE) 
+  return(results)
+}   
+```
+
+Now that the function is initialized, it becomes possible to apply it across 
+all rows within the data frame capturing the simulation scenarios. Each row 
+corresponds to a distinct simulation scenario, facilitating comprehensive 
+exploration and analysis.
+
+```{r run function for every simulation scenario, eval=FALSE}
+results.power <- pbapply::pbmapply(power.simulation, a_1 = grid$a_1, a_2 = grid$a_2,
+                                   c_prime = grid$c_prime, d = grid$d, b_1 = grid$b_1, 
+                                   b_2 = grid$b_2, i1 = grid$i1, i2 = grid$i2, i3 = grid$i3, 
+                                   sigma_m1 = grid$sigma_m1, sigma_m2 = grid$sigma_m2, 
+                                   sigma_m3 = grid$sigma_m3)
+```
+         
+The following code unlists the compiled results for each simulation scenario,
+showcasing the empirical power per path coefficient and indirect effect.
+After unlisting, the grid can be used to make graphs using i.e. GGPlot2.  
+         
+```{r unlist results, eval=FALSE}                                   
+# unlist
+grid$power.a_1      <- unlist(results.power[seq(1, length(results.power), 7)])
+grid$power.a_2      <- unlist(results.power[seq(2, length(results.power), 7)])
+grid$power.b_1      <- unlist(results.power[seq(3, length(results.power), 7)]) 
+grid$power.b_2      <- unlist(results.power[seq(4, length(results.power), 7)]) 
+grid$power.d        <- unlist(results.power[seq(5, length(results.power), 7)])
+grid$power.c_prime  <- unlist(results.power[seq(6, length(results.power), 7)])
+grid$power.IE       <- unlist(results.power[seq(7, length(results.power), 7)])
+```
+
+## Sources 
+
+Rijnhart, J. J., Lamp, S. J., Valente, M. J., MacKinnon, D. P., Twisk, J. W. R., & Heymans, M. W. 
+(2021). Mediation analysis Methods used in observational research: A scoping 
+review and recommendations. BMC Medical Research Methodology, 21(1). 
+https://doi.org/10.1186/s12874-021-01426-3 
+
+MacKinnon, D. P., Valente, M. J., & Gonzalez, O. R. (2019). The correspondence between 
+causal and traditional mediation analysis: The link is the mediator by treatment 
+interaction. Prevention Science, 21(2), 147–157. 
+https://doi.org/10.1007/s11121-019-01076-4 
+
+Vandermeulen, S., Cummins, J., De Neve, J., & Kaya, I. (2023). Power Calculations 
+via Monte-Carlo Simulations in Mediation Analysis with an Application to Sex Differences
+in Trait Anxiety for Young Americans.
+
+Have, T. R. T., & Joffe, M. M. (2010). A review of causal estimation of effects in mediation 
+analyses. Statistical Methods in Medical Research, 21(1), 77–107. 
+https://doi.org/10.1177/0962280210391076 
